@@ -1,0 +1,43 @@
+name: CD — Deploy to k3s
+
+on:
+  workflow_run:
+    workflows: [ "CI — Build and Publish" ]
+    types: [ completed ]
+    branches: [ main ]
+
+env:
+  IMAGE_NAME: ghcr.io/adklsj-development-operations/spring-petclinic:latest
+
+jobs:
+  deploy:
+    name: Deploy to k3s
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Write SSH private key
+        run: |
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > /tmp/ec2_key.pem
+          chmod 600 /tmp/ec2_key.pem
+
+      - name: Render and deploy manifest
+        run: |
+          export IMAGE="${{ env.IMAGE_NAME }}"
+          envsubst < k8s/petclinic.yml > /tmp/petclinic-rendered.yml
+
+          scp -o StrictHostKeyChecking=no -i /tmp/ec2_key.pem \
+            /tmp/petclinic-rendered.yml \
+            ubuntu@${{ secrets.EC2_PUBLIC_IP }}:/tmp/petclinic.yml
+
+          ssh -o StrictHostKeyChecking=no -i /tmp/ec2_key.pem \
+            ubuntu@${{ secrets.EC2_PUBLIC_IP }} \
+            "kubectl apply -f /tmp/petclinic.yml && kubectl rollout status deployment/petclinic --timeout=120s"
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f /tmp/ec2_key.pem
