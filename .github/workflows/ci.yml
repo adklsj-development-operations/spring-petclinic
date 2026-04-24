@@ -26,6 +26,26 @@ jobs:
       - name: Build and test with Maven
         run: ./mvnw -B verify
 
+      - name: Notify Slack on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": ":x: *CI failed* on `${{ github.ref_name }}`",
+              "attachments": [{
+                "color": "danger",
+                "fields": [
+                  { "title": "Commit", "value": "${{ github.event.head_commit.message }}", "short": false },
+                  { "title": "Author", "value": "${{ github.actor }}", "short": true },
+                  { "title": "Run", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false }
+                ]
+              }]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
