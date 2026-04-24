@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE: ghcr.io/adklsj-development-operations/spring-petclinic:latest
+  IMAGE: ghcr.io/adklsj-development-operations/petclinic:latest
 
 jobs:
   deploy:
@@ -26,14 +26,14 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -i /tmp/ec2_key.pem \
             ubuntu@${{ secrets.EC2_PUBLIC_IP }} << 'EOF'
-            docker pull ghcr.io/adklsj-development-operations/spring-petclinic:latest
+            docker pull ghcr.io/adklsj-development-operations/petclinic:latest
             docker stop petclinic 2>/dev/null || true
             docker rm petclinic 2>/dev/null || true
             docker run -d \
               --name petclinic \
               --restart unless-stopped \
               -p 8080:8080 \
-              ghcr.io/adklsj-development-operations/spring-petclinic:latest
+              ghcr.io/adklsj-development-operations/petclinic:latest
             docker ps --filter name=petclinic
           EOF
 
@@ -47,7 +47,7 @@ jobs:
               "attachments": [{
                 "color": "good",
                 "fields": [
-                  { "title": "Image", "value": "ghcr.io/adklsj-development-operations/spring-petclinic:latest", "short": false },
+                  { "title": "Image", "value": "ghcr.io/adklsj-development-operations/petclinic:latest", "short": false },
                   { "title": "Triggered by", "value": "${{ github.actor }}", "short": true },
                   { "title": "Run", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false }
                 ]
